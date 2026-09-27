@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, ArrowUpRight, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { GithubIcon, LinkedinIcon } from "@/components/ui/brand-icons";
-import { cn } from "@/lib/utils/helpers";
+import { cn, normalizeGoogleDriveImageUrl } from "@/lib/utils/helpers";
 
 interface ContactCTAProps {
   email?: string;
@@ -28,6 +28,14 @@ export function ContactCTA({
   avatarUrl = "/images/himanshu-profile.jpg",
   className,
 }: ContactCTAProps) {
+  const initialAvatar = normalizeGoogleDriveImageUrl(avatarUrl) || "/images/himanshu-profile.jpg";
+  const [imgSrc, setImgSrc] = useState(initialAvatar);
+
+  React.useEffect(() => {
+    const updated = normalizeGoogleDriveImageUrl(avatarUrl) || "/images/himanshu-profile.jpg";
+    setImgSrc(updated);
+  }, [avatarUrl]);
+
   const [formData, setFormData] = useState({ name: "", email: "", message: "" });
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -103,10 +111,16 @@ export function ContactCTA({
             {/* Cutout Portrait Container */}
             <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden bg-black/20 mb-8 border border-white/20 shadow-lg">
               <Image
-                src={avatarUrl}
+                src={imgSrc}
                 alt="Himanshu Jadav"
                 fill
                 sizes="(max-width: 1024px) 100vw, 420px"
+                unoptimized={imgSrc.startsWith("http") || imgSrc.startsWith("data:")}
+                onError={() => {
+                  if (imgSrc !== "/images/himanshu-profile.jpg") {
+                    setImgSrc("/images/himanshu-profile.jpg");
+                  }
+                }}
                 className="object-cover object-top filter contrast-[1.08]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

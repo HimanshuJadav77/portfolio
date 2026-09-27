@@ -25,6 +25,13 @@ export function Identity({
   skillsCount = 19,
   className,
 }: IdentityProps) {
+  const initialAvatar = normalizeGoogleDriveImageUrl(avatarUrl) || '/images/himanshu-profile.jpg';
+  const [imgSrc, setImgSrc] = React.useState(initialAvatar);
+
+  React.useEffect(() => {
+    const updated = normalizeGoogleDriveImageUrl(avatarUrl) || '/images/himanshu-profile.jpg';
+    setImgSrc(updated);
+  }, [avatarUrl]);
   return (
     <section
       id="about"
@@ -98,10 +105,16 @@ export function Identity({
               <div className="relative flex flex-col items-center">
                 <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-card overflow-hidden shadow-xl bg-gradient-to-tr from-purple-500/80 via-fuchsia-500/50 to-indigo-600/80 relative">
                   <Image
-                    src={normalizeGoogleDriveImageUrl(avatarUrl)}
+                    src={imgSrc}
                     alt="Himanshu Jadav"
                     fill
                     sizes="128px"
+                    unoptimized={imgSrc.startsWith("http") || imgSrc.startsWith("data:")}
+                    onError={() => {
+                      if (imgSrc !== "/images/himanshu-profile.jpg") {
+                        setImgSrc("/images/himanshu-profile.jpg");
+                      }
+                    }}
                     className="object-cover object-top filter contrast-[1.05]"
                   />
                 </div>

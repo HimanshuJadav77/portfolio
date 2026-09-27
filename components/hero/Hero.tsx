@@ -36,7 +36,13 @@ export function Hero({
   const sectionRef = useRef<HTMLElement>(null);
   const shouldReduceMotion = useReducedMotion();
 
-  const normalizedAvatar = normalizeGoogleDriveImageUrl(avatarUrl);
+  const initialAvatar = normalizeGoogleDriveImageUrl(avatarUrl) || "/images/himanshu-profile.jpg";
+  const [imgSrc, setImgSrc] = React.useState(initialAvatar);
+
+  React.useEffect(() => {
+    const updated = normalizeGoogleDriveImageUrl(avatarUrl) || "/images/himanshu-profile.jpg";
+    setImgSrc(updated);
+  }, [avatarUrl]);
 
   const { scrollProgress } = useScrollContext();
   const contentY = useTransform(scrollProgress, [0, 0.3], [0, -36]);
@@ -65,7 +71,7 @@ export function Hero({
         className="relative z-10 w-full max-w-[1360px] px-5 sm:px-8 lg:px-12 mx-auto flex-1 flex flex-col justify-between"
         style={shouldReduceMotion ? undefined : { y: contentY, opacity: contentOpacity }}
       >
-        {/* Top Center: Signature Arch with Portrait & Neon Purple Script */}
+        {/* Top Center: Signature Arch with Portrait & Neon Orange Script */}
         <div className="flex justify-center items-center relative my-4 sm:my-8">
           {/* Background watermark placed EXACTLY behind the photo image */}
           <div
@@ -79,18 +85,24 @@ export function Hero({
             initial={{ opacity: 0, scale: 0.92, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="relative z-10 w-64 sm:w-80 h-[340px] sm:h-[420px] rounded-t-full rounded-b-[46px] p-[2px] bg-gradient-to-b from-purple-500/60 via-fuchsia-500/35 to-purple-900/80 shadow-[0_25px_70px_-15px_rgba(168,85,247,0.35)] border border-purple-500/25 flex items-end justify-center"
+            className="relative z-10 w-64 sm:w-80 h-[340px] sm:h-[420px] rounded-t-full rounded-b-[46px] p-[2.5px] bg-gradient-to-b from-orange-500/80 via-amber-500/50 to-orange-700/80 shadow-[0_0_50px_rgba(249,115,22,0.40),0_25px_70px_-15px_rgba(234,88,12,0.50)] border border-orange-500/40 flex items-end justify-center"
           >
-            {/* Inner Arch Container — Zero orange, pure dark framing */}
+            {/* Inner Arch Container — Zero orange inside, pure dark framing */}
             <div className="relative w-full h-full rounded-t-full rounded-b-[44px] bg-zinc-950 overflow-hidden">
               {/* Profile Image inside the arch — completely fits arch shape with zero gap */}
               <div className="absolute inset-0 overflow-hidden rounded-t-full rounded-b-[44px]">
                 <Image
-                  src={normalizedAvatar}
+                  src={imgSrc}
                   alt={name}
                   fill
                   priority
+                  unoptimized={imgSrc.startsWith("http") || imgSrc.startsWith("data:")}
                   sizes="(max-width: 640px) 260px, 320px"
+                  onError={() => {
+                    if (imgSrc !== "/images/himanshu-profile.jpg") {
+                      setImgSrc("/images/himanshu-profile.jpg");
+                    }
+                  }}
                   className={cn(
                     "object-cover filter contrast-[1.05] brightness-95 transition-transform duration-300",
                     avatarCrop?.scale ? "" : "scale-[1.02]"

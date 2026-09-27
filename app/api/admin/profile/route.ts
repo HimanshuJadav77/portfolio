@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyAdminRequest } from "@/lib/firebase/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
+import { revalidatePath } from "next/cache";
+import { normalizeGoogleDriveImageUrl } from "@/lib/utils/helpers";
 
 export const runtime = 'nodejs';
 
@@ -53,12 +55,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const cleanedAvatar = avatarUrl?.trim() ? normalizeGoogleDriveImageUrl(avatarUrl.trim()) : "";
+
     const profileData: Record<string, any> = {
       name: name.trim(),
       role: role.trim(),
       bio: bio?.trim() || "",
       location: location?.trim() || "Rajkot, India",
-      avatarUrl: avatarUrl?.trim() || "",
+      avatarUrl: cleanedAvatar,
       resumeUrl: resumeUrl?.trim() || "/resume.pdf",
       socialLinks: Array.isArray(socialLinks) ? socialLinks : [],
       updatedAt: Timestamp.now(),
@@ -69,6 +73,15 @@ export async function PUT(request: NextRequest) {
     }
 
     await db.collection("profile").doc("main").set(profileData, { merge: true });
+
+    // Invalidate ISR cache for client pages so profile changes reflect immediately
+    try {
+      revalidatePath("/", "page");
+      revalidatePath("/about", "page");
+      revalidatePath("/admin/profile", "page");
+    } catch (revalErr) {
+      console.warn("revalidatePath warning:", revalErr);
+    }
 
     return NextResponse.json({ profile: profileData });
   } catch (error) {

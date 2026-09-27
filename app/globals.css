@@ -561,9 +561,9 @@
   -webkit-text-fill-color: #FFFFFF;
   filter: 
     drop-shadow(0 2px 4px rgba(0, 0, 0, 0.75))
-    drop-shadow(0 0 8px rgba(217, 70, 239, 0.95))
-    drop-shadow(0 0 20px rgba(192, 38, 211, 0.8))
-    drop-shadow(0 0 42px rgba(168, 85, 247, 0.55));
+    drop-shadow(0 0 8px rgba(251, 146, 60, 0.95))
+    drop-shadow(0 0 20px rgba(245, 158, 11, 0.8))
+    drop-shadow(0 0 42px rgba(234, 88, 12, 0.55));
   word-spacing: 0.4em;
   letter-spacing: 0.015em;
   line-height: 1.2;
