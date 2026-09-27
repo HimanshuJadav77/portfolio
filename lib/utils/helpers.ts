@@ -67,3 +67,30 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
     }
   };
 }
+
+/**
+ * Normalizes Google Drive and remote image URLs to direct high-speed image streams.
+ * Converts:
+ * - https://drive.google.com/file/d/FILE_ID/view...
+ * - https://drive.google.com/open?id=FILE_ID
+ * - https://drive.google.com/uc?id=FILE_ID
+ * Into:
+ * - https://lh3.googleusercontent.com/d/FILE_ID
+ */
+export function normalizeGoogleDriveImageUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.includes('lh3.googleusercontent.com')) return trimmed;
+
+  const fileIdMatch = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileIdMatch && fileIdMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${fileIdMatch[1]}`;
+  }
+
+  const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch && idMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+  }
+
+  return trimmed;
+}

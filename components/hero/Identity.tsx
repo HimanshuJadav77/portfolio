@@ -4,7 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
-import { cn } from '@/lib/utils/helpers';
+import { cn, normalizeGoogleDriveImageUrl } from '@/lib/utils/helpers';
 
 interface IdentityProps {
   role?: string;
@@ -96,13 +96,13 @@ export function Identity({
 
               {/* Center Circular Portrait with Pill Badge */}
               <div className="relative flex flex-col items-center">
-                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-card overflow-hidden shadow-xl bg-gradient-to-tr from-[#FF5E36] via-[#FF3366] to-[#C026D3] relative">
+                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-card overflow-hidden shadow-xl bg-gradient-to-tr from-purple-500/80 via-fuchsia-500/50 to-indigo-600/80 relative">
                   <Image
-                    src={avatarUrl}
+                    src={normalizeGoogleDriveImageUrl(avatarUrl)}
                     alt="Himanshu Jadav"
                     fill
                     sizes="128px"
-                    className="object-cover object-top filter contrast-[1.08]"
+                    className="object-cover object-top filter contrast-[1.05]"
                   />
                 </div>
 

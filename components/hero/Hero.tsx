@@ -5,7 +5,8 @@ import Image from "next/image";
 import { motion, useReducedMotion, useTransform } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { useScrollContext } from "@/components/scroll/ScrollProvider";
-import { cn } from "@/lib/utils/helpers";
+import { cn, normalizeGoogleDriveImageUrl } from "@/lib/utils/helpers";
+import { AvatarCropSettings } from "@/types/profile";
 
 interface HeroProps {
   heroStatement?: string;
@@ -16,17 +17,26 @@ interface HeroProps {
   role?: string;
   location?: string;
   avatarUrl?: string;
+  avatarCrop?: AvatarCropSettings;
   className?: string;
 }
 
 export function Hero({
   heroStatement,
+  githubUrl,
+  linkedinUrl,
+  email,
   name = "Himanshu Jadav",
+  role,
+  location,
   avatarUrl = "/images/himanshu-profile.jpg",
+  avatarCrop,
   className,
 }: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const shouldReduceMotion = useReducedMotion();
+
+  const normalizedAvatar = normalizeGoogleDriveImageUrl(avatarUrl);
 
   const { scrollProgress } = useScrollContext();
   const contentY = useTransform(scrollProgress, [0, 0.3], [0, -36]);
@@ -69,25 +79,29 @@ export function Hero({
             initial={{ opacity: 0, scale: 0.92, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="relative z-10 w-64 sm:w-80 h-[340px] sm:h-[420px] rounded-t-full rounded-b-[46px] p-[2px] bg-gradient-to-b from-[#FF8A65] via-[#FF5E36] to-[#C026D3]/90 shadow-[0_25px_70px_-15px_rgba(255,94,54,0.35)] flex items-end justify-center"
+            className="relative z-10 w-64 sm:w-80 h-[340px] sm:h-[420px] rounded-t-full rounded-b-[46px] p-[2px] bg-gradient-to-b from-purple-500/60 via-fuchsia-500/35 to-purple-900/80 shadow-[0_25px_70px_-15px_rgba(168,85,247,0.35)] border border-purple-500/25 flex items-end justify-center"
           >
-            {/* Inner Arch Container */}
-            <div className="relative w-full h-full rounded-t-full rounded-b-[44px] bg-gradient-to-b from-[#FF7A45] via-[#FF3366] to-[#C026D3] overflow-hidden">
-              {/* Top Arch Ambient Light Vignette */}
-              <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
-
-              {/* Profile Image inside the arch */}
-              <div className="absolute inset-x-0 bottom-0 top-10 overflow-hidden">
+            {/* Inner Arch Container — Zero orange, pure dark framing */}
+            <div className="relative w-full h-full rounded-t-full rounded-b-[44px] bg-zinc-950 overflow-hidden">
+              {/* Profile Image inside the arch — completely fits arch shape with zero gap */}
+              <div className="absolute inset-0 overflow-hidden rounded-t-full rounded-b-[44px]">
                 <Image
-                  src={avatarUrl}
+                  src={normalizedAvatar}
                   alt={name}
                   fill
                   priority
                   sizes="(max-width: 640px) 260px, 320px"
-                  className="object-cover object-top filter contrast-[1.08] brightness-95"
+                  className={cn(
+                    "object-cover filter contrast-[1.05] brightness-95 transition-transform duration-300",
+                    avatarCrop?.scale ? "" : "scale-[1.02]"
+                  )}
+                  style={{
+                    objectPosition: `${avatarCrop?.x ?? 50}% ${avatarCrop?.y ?? 30}%`,
+                    transform: avatarCrop?.scale ? `scale(${avatarCrop.scale})` : undefined,
+                  }}
                 />
-                {/* Soft gradient blend at bottom */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                {/* Soft gradient blend at bottom for maximum signature text legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent pointer-events-none" />
               </div>
             </div>
 

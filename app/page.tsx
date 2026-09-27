@@ -78,6 +78,7 @@ export default async function HomePage() {
             role={profile?.role}
             location={profile?.location}
             avatarUrl={avatarUrl}
+            avatarCrop={profile?.avatarCrop}
           />
         </SectionErrorBoundary>
 

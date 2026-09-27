@@ -42,7 +42,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, role, bio, location, avatarUrl, resumeUrl, socialLinks } = body;
+    const { name, role, bio, location, avatarUrl, avatarCrop, resumeUrl, socialLinks } = body;
 
     if (!name || !role) {
       return NextResponse.json(
@@ -51,7 +51,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const profileData = {
+    const profileData: Record<string, any> = {
       name: name.trim(),
       role: role.trim(),
       bio: bio?.trim() || "",
@@ -61,6 +61,10 @@ export async function PUT(request: NextRequest) {
       socialLinks: Array.isArray(socialLinks) ? socialLinks : [],
       updatedAt: Timestamp.now(),
     };
+
+    if (avatarCrop && typeof avatarCrop === "object") {
+      profileData.avatarCrop = avatarCrop;
+    }
 
     await db.collection("profile").doc("main").set(profileData, { merge: true });
 
