@@ -17,15 +17,19 @@ let db: Firestore | undefined;
 let storage: FirebaseStorage | undefined;
 let auth: Auth | undefined;
 
-if (typeof window !== 'undefined') {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
+if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+  try {
+    if (!getApps().length) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApps()[0];
+    }
+    db = getFirestore(app);
+    storage = getStorage(app);
+    auth = getAuth(app);
+  } catch (error) {
+    console.warn('Firebase client initialization skipped or failed:', error);
   }
-  db = getFirestore(app);
-  storage = getStorage(app);
-  auth = getAuth(app);
 }
 
 export { app, db, storage, auth };

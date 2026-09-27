@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest) {
 
     const db = getAdminDb();
     if (!db) {
-      return NextResponse.json({ error: "Database unavailable" }, { status: 500 });
+      return NextResponse.json({ error: "Database unavailable. Firebase Admin credentials are not configured on the server." }, { status: 500 });
     }
 
     const body = await request.json();

@@ -21,6 +21,19 @@ export function getAdminCredentials() {
   if (privateKey) {
     // Strip surrounding quotes if present
     privateKey = privateKey.replace(/^["']|["']$/g, '').trim();
+
+    // Auto-detect and decode Base64 encoded private keys (common on Vercel/Netlify)
+    if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+      try {
+        const decoded = Buffer.from(privateKey, 'base64').toString('utf8');
+        if (decoded.includes('-----BEGIN PRIVATE KEY-----')) {
+          privateKey = decoded;
+        }
+      } catch {
+        // ignore base64 decode failure
+      }
+    }
+
     // Normalize escaped \n and Windows CRLF to standard LF
     privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
   }
@@ -30,6 +43,18 @@ export function getAdminCredentials() {
     clientEmail,
     privateKey,
   };
+}
+
+// Check which admin environment variables are missing
+export function getMissingAdminConfig(): string[] {
+  const missing: string[] = [];
+  const creds = getAdminCredentials();
+  if (!creds.projectId) missing.push('FIREBASE_ADMIN_PROJECT_ID (or NEXT_PUBLIC_FIREBASE_PROJECT_ID)');
+  if (!creds.clientEmail) missing.push('FIREBASE_ADMIN_CLIENT_EMAIL');
+  if (!creds.privateKey || !creds.privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    missing.push('FIREBASE_ADMIN_PRIVATE_KEY');
+  }
+  return missing;
 }
 
 // Detect if we're in a build environment without valid credentials

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { Plus, FileText, Code, Briefcase, User, Settings, ChevronRight, ExternalLink, Pencil } from "lucide-react";
+import { Plus, FileText, Code, Briefcase, User, Settings, ChevronRight, ExternalLink, Pencil, AlertTriangle, Database } from "lucide-react";
 import { cn, toDate } from "@/lib/utils/helpers";
 import { Project, Skill, Experience, Profile } from "@/types";
 
@@ -12,6 +12,8 @@ interface AdminOverviewProps {
   skills: Skill[];
   experience: Experience[];
   profile: Profile | null;
+  isDbConnected?: boolean;
+  missingVars?: string[];
 }
 
 const quickActions = [
@@ -39,7 +41,7 @@ function RowThumb({ project }: { project: Project }) {
   );
 }
 
-export function AdminOverview({ projects, skills, experience, profile }: AdminOverviewProps) {
+export function AdminOverview({ projects, skills, experience, profile, isDbConnected = true, missingVars = [] }: AdminOverviewProps) {
   const publishedCount = projects.filter((p) => p.published).length;
   const draftCount = projects.filter((p) => !p.published).length;
   const featuredCount = projects.filter((p) => p.featured).length;
@@ -57,10 +59,59 @@ export function AdminOverview({ projects, skills, experience, profile }: AdminOv
 
   return (
     <div className="space-y-8">
+      {/* Database connection warning banner */}
+      {!isDbConnected && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 backdrop-blur-sm">
+          <div className="flex items-start gap-3.5">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-amber-300">
+                  Firebase Firestore Disconnected (Fallback Mode Active)
+                </h3>
+                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Read Only
+                </span>
+              </div>
+              <p className="text-xs text-amber-200/90 leading-relaxed max-w-3xl">
+                The deployed application is missing Firebase Admin environment variables on your hosting provider. The dashboard is currently displaying static fallback data. To save projects, skills, or profile edits, add the missing environment variables to your hosting dashboard (e.g. Vercel Project Settings &gt; Environment Variables).
+              </p>
+              {missingVars && missingVars.length > 0 && (
+                <div className="mt-2.5 pt-2 border-t border-amber-500/20 text-xs">
+                  <span className="font-mono text-[11px] text-amber-300 font-semibold tracking-wider uppercase">
+                    Missing Server Environment Variables:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {missingVars.map((v) => (
+                      <span key={v} className="font-mono text-[11px] bg-amber-950/60 border border-amber-500/30 text-amber-200 px-2 py-0.5 rounded">
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page title + primary action */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
-          <p className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground mb-1.5">ADMIN / OVERVIEW</p>
+          <div className="flex items-center gap-2 mb-1.5">
+            <p className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground">ADMIN / OVERVIEW</p>
+            <span className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[10px]",
+              isDbConnected 
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
+                : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+            )}>
+              <span className={cn("w-1.5 h-1.5 rounded-full", isDbConnected ? "bg-emerald-400" : "bg-amber-400")} />
+              {isDbConnected ? "Firestore Live" : "Fallback Mode"}
+            </span>
+          </div>
           <h1 className="font-display text-2xl sm:text-3xl font-medium tracking-tight text-foreground">Dashboard</h1>
         </div>
         <Link href="/admin/projects/new" className="btn-primary self-start sm:self-auto h-10 text-sm min-h-[44px]">
