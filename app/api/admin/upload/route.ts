@@ -3,6 +3,8 @@ import { adminStorage } from "@/lib/firebase/admin";
 import { verifyAdminRequest } from "@/lib/firebase/auth-server";
 import { v4 as uuidv4 } from "uuid";
 
+export const runtime = 'nodejs';
+
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 

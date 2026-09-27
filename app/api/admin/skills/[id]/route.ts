@@ -3,6 +3,8 @@ import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyAdminRequest } from "@/lib/firebase/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
 
+export const runtime = 'nodejs';
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

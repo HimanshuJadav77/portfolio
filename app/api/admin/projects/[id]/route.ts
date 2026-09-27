@@ -4,6 +4,8 @@ import { verifyAdminRequest } from "@/lib/firebase/auth-server";
 import { projectSchema } from "@/lib/validations/project";
 import { Timestamp } from "firebase-admin/firestore";
 
+export const runtime = 'nodejs';
+
 async function verifyAdmin(request: NextRequest) {
   return verifyAdminRequest(request);
 }

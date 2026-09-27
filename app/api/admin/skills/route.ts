@@ -4,6 +4,8 @@ import { verifyAdminRequest } from "@/lib/firebase/auth-server";
 import { Timestamp } from "firebase-admin/firestore";
 import { slugify } from "@/lib/utils/helpers";
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     const admin = await verifyAdminRequest(request);

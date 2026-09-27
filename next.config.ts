@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  serverExternalPackages: ["firebase-admin"],
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,

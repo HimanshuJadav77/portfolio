@@ -7,6 +7,17 @@ export interface AdminUser {
   isAdmin: boolean;
 }
 
+// Safely parse JSON from a fetch response, returning null if body is empty or invalid
+async function safeJson(res: Response): Promise<Record<string, unknown> | null> {
+  try {
+    const text = await res.text();
+    if (!text || !text.trim()) return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 export async function signInAdmin(email: string, password: string): Promise<AdminUser> {
   // 1. Try Firebase Authentication first if initialized on client
   if (auth) {
@@ -20,12 +31,15 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
         body: JSON.stringify({ idToken, email }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Session creation failed");
+      const data = await safeJson(res);
+      if (!res.ok || !data) {
+        throw new Error(
+          (data?.error as string) ||
+          `Server returned ${res.status}${res.statusText ? ' ' + res.statusText : ''}. Check that environment variables are configured on your hosting provider.`
+        );
       }
 
-      return data.user;
+      return data.user as AdminUser;
     } catch (firebaseErr: unknown) {
       const err = firebaseErr as { code?: string; message?: string };
       // If user is rejected by Firebase Auth explicitly:
@@ -34,7 +48,7 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
         err.code === "auth/wrong-password" ||
         err.code === "auth/user-not-found"
       ) {
-        throw new Error("Invalid email or password in Firebase Authentication");
+        throw new Error("Invalid email or password");
       }
 
       // If configuration is not yet active in console or offline, fallback to server check
@@ -49,12 +63,15 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
     body: JSON.stringify({ email, password }),
   });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || "Authentication failed");
+  const data = await safeJson(res);
+  if (!res.ok || !data) {
+    throw new Error(
+      (data?.error as string) ||
+      `Server returned ${res.status}${res.statusText ? ' ' + res.statusText : ''}. Make sure ADMIN_EMAIL and ADMIN_PASSWORD environment variables are set on your hosting provider.`
+    );
   }
 
-  return data.user;
+  return data.user as AdminUser;
 }
 
 export async function signOutAdmin(): Promise<void> {

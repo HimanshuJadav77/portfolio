@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken } from "@/lib/firebase/auth-session";
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   const sessionCookie = request.cookies.get("admin_session")?.value;
 
