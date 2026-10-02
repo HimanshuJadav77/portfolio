@@ -3,6 +3,8 @@ import { adminDb } from "@/lib/firebase/admin";
 import { verifyAdminRequest } from "@/lib/firebase/auth-server";
 import { projectSchema } from "@/lib/validations/project";
 import { Timestamp } from "firebase-admin/firestore";
+import { revalidatePath } from "next/cache";
+import { normalizeGoogleDriveImageUrl } from "@/lib/utils/helpers";
 
 export const runtime = 'nodejs';
 
@@ -43,13 +45,30 @@ export async function POST(request: NextRequest) {
     }
 
     const now = Timestamp.now();
+    const normalizedGallery = (validatedData.gallery || []).map((item) => ({
+      ...item,
+      url: item.url ? normalizeGoogleDriveImageUrl(item.url) : "",
+    }));
+
     const projectData = {
       ...validatedData,
+      thumbnailUrl: validatedData.thumbnailUrl ? normalizeGoogleDriveImageUrl(validatedData.thumbnailUrl) : "",
+      heroImageUrl: validatedData.heroImageUrl ? normalizeGoogleDriveImageUrl(validatedData.heroImageUrl) : "",
+      gallery: normalizedGallery,
       createdAt: now,
       updatedAt: now,
     };
 
     const docRef = await adminDb!.collection("projects").add(projectData);
+
+    try {
+      revalidatePath("/", "page");
+      revalidatePath("/projects", "page");
+      if (projectData.slug) revalidatePath(`/projects/${projectData.slug}`, "page");
+      revalidatePath("/admin/projects", "page");
+    } catch (e) {
+      console.warn("revalidatePath error:", e);
+    }
 
     return NextResponse.json({ id: docRef.id, ...projectData }, { status: 201 });
   } catch (error) {

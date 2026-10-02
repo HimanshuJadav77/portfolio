@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Upload, X, Eye, Save, Plus, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils/helpers";
+import { Loader2, Upload, X, Eye, Save, Plus, AlertCircle, Link2, ExternalLink, Sparkles, Image as ImageIcon, Trash2 } from "lucide-react";
+import { cn, normalizeGoogleDriveImageUrl } from "@/lib/utils/helpers";
 import { Project, Skill, ProjectFormData } from "@/types";
 import { projectFormSchema } from "@/lib/validations/project";
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,17 @@ const defaultFormData: ProjectFormData = {
 export function AdminProjectForm({ project, skills, mode }: AdminProjectFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [imagePreviews, setImagePreviews] = useState<Record<string, string>>({});
+  const [imagePreviews, setImagePreviews] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    if (project?.thumbnailUrl) initial.thumbnailUrl = normalizeGoogleDriveImageUrl(project.thumbnailUrl);
+    if (project?.heroImageUrl) initial.heroImageUrl = normalizeGoogleDriveImageUrl(project.heroImageUrl);
+    if (project?.gallery) {
+      project.gallery.forEach((g, idx) => {
+        if (g?.url) initial[`gallery_${idx}`] = normalizeGoogleDriveImageUrl(g.url);
+      });
+    }
+    return initial;
+  });
   const [, setUploadProgress] = useState<Record<string, number>>({});
 
   const form = useForm<any>({
@@ -175,10 +185,37 @@ export function AdminProjectForm({ project, skills, mode }: AdminProjectFormProp
     }
   };
 
+  const watchedThumbnail = form.watch("thumbnailUrl") || "";
+  const watchedHero = form.watch("heroImageUrl") || "";
+  const watchedGallery = form.watch("gallery") || [];
+
+  const handleThumbnailUrlChange = (val: string) => {
+    const normalized = normalizeGoogleDriveImageUrl(val);
+    form.setValue("thumbnailUrl", normalized, { shouldValidate: true, shouldDirty: true });
+    setImagePreviews(prev => ({ ...prev, thumbnailUrl: normalized }));
+  };
+
+  const handleHeroUrlChange = (val: string) => {
+    const normalized = normalizeGoogleDriveImageUrl(val);
+    form.setValue("heroImageUrl", normalized, { shouldValidate: true, shouldDirty: true });
+    setImagePreviews(prev => ({ ...prev, heroImageUrl: normalized }));
+  };
+
+  const handleGalleryUrlChange = (index: number, val: string) => {
+    const normalized = normalizeGoogleDriveImageUrl(val);
+    const gallery = [...(form.getValues("gallery") || [])];
+    if (gallery[index]) {
+      gallery[index] = { ...gallery[index], url: normalized };
+      form.setValue("gallery", gallery, { shouldValidate: true, shouldDirty: true });
+    }
+    setImagePreviews(prev => ({ ...prev, [`gallery_${index}`]: normalized }));
+  };
+
   const onSubmit = async (data: ProjectFormData) => {
     setSaving(true);
     try {
-      const url = mode === "create" ? "/api/admin/projects" : `/api/admin/projects/${project?.id}`;
+      const targetId = project?.id || project?.slug;
+      const url = mode === "create" ? "/api/admin/projects" : `/api/admin/projects/${targetId}`;
       const method = mode === "create" ? "POST" : "PATCH";
 
       const response = await fetch(url, {
@@ -370,189 +407,335 @@ export function AdminProjectForm({ project, skills, mode }: AdminProjectFormProp
           <TabsContent value="media" className="space-y-6 p-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">Images</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-primary" />
+                  Project Images (URLs & Links)
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Provide image links or Google Drive URLs for your project. Google Drive links are automatically converted to direct, high-speed CDN stream URLs.
+                </p>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Thumbnail</Label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange("thumbnailUrl")}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        aria-label="Upload thumbnail"
-                      />
-                      <div className={cn(
-                        "aspect-video rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer transition-colors hover:border-primary/50",
-                        imagePreviews.thumbnailUrl && "border-transparent"
-                      )}>
-                        {imagePreviews.thumbnailUrl ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={imagePreviews.thumbnailUrl}
-                              alt="Thumbnail preview"
-                              className="object-cover rounded-lg w-full h-full"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute top-2 right-2 bg-background/80"
-                              onClick={() => {
-                                form.setValue("thumbnailUrl", "");
-                                setImagePreviews(prev => { const n = { ...prev }; delete n.thumbnailUrl; return n; });
-                              }}
-                            >
-                              <X className="w-4 h-4" aria-hidden="true" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-8 h-8 text-muted-foreground" aria-hidden="true" />
-                            <span className="sr-only">Click to upload thumbnail</span>
-                          </>
-                        )}
-                      </div>
+              <CardContent className="space-y-8">
+                {/* Thumbnail & Hero Image Grid */}
+                <div className="grid lg:grid-cols-2 gap-8">
+                  {/* Thumbnail Image */}
+                  <div className="space-y-3 p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="thumbnail-url" className="text-sm font-semibold flex items-center gap-1.5">
+                        <Link2 className="w-4 h-4 text-primary" />
+                        Thumbnail Image Link
+                      </Label>
+                      {watchedThumbnail && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          Active
+                        </span>
+                      )}
                     </div>
-                    <p className="caption text-muted-foreground">Recommended: 800x450px</p>
+
+                    <div className="relative">
+                      <Input
+                        id="thumbnail-url"
+                        type="url"
+                        placeholder="https://drive.google.com/file/d/... or https://..."
+                        value={watchedThumbnail}
+                        onChange={(e) => handleThumbnailUrlChange(e.target.value)}
+                        className="font-mono text-xs pr-8"
+                      />
+                      {watchedThumbnail && (
+                        <button
+                          type="button"
+                          onClick={() => handleThumbnailUrlChange("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          title="Clear URL"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Google Drive auto-converted badge */}
+                    {watchedThumbnail.includes("lh3.googleusercontent.com") && (
+                      <div className="text-[11px] text-amber-500 flex items-center gap-1 font-mono">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                        <span>Google Drive link detected and converted to high-speed stream.</span>
+                      </div>
+                    )}
+
+                    {/* Preview Area */}
+                    <div className="relative aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+                      {watchedThumbnail ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={watchedThumbnail}
+                            alt="Thumbnail preview"
+                            className="object-cover w-full h-full rounded-lg"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md rounded-lg p-1 border border-white/20">
+                            <a
+                              href={watchedThumbnail}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-white hover:text-primary transition-colors"
+                              title="Open image in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleThumbnailUrlChange("")}
+                              className="p-1 text-white hover:text-error transition-colors"
+                              title="Remove thumbnail"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center p-4 text-muted-foreground">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-1.5 opacity-40" />
+                          <p className="text-xs font-medium">No Thumbnail Link</p>
+                          <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                            Paste an image link above to view preview
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Recommended: 800x450px (16:9). Used on project cards and home page showcase.
+                    </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Hero Image</Label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange("heroImageUrl")}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        aria-label="Upload hero image"
-                      />
-                      <div className={cn(
-                        "aspect-video rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer transition-colors hover:border-primary/50",
-                        imagePreviews.heroImageUrl && "border-transparent"
-                      )}>
-                        {imagePreviews.heroImageUrl ? (
-                          <>
-                            <img
-                              src={imagePreviews.heroImageUrl}
-                              alt="Hero preview"
-                              className="object-cover rounded-lg w-full h-full"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute top-2 right-2 bg-background/80"
-                              onClick={() => {
-                                form.setValue("heroImageUrl", "");
-                                setImagePreviews(prev => { const n = { ...prev }; delete n.heroImageUrl; return n; });
-                              }}
-                            >
-                              <X className="w-4 h-4" aria-hidden="true" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-8 h-8 text-muted-foreground" aria-hidden="true" />
-                            <span className="sr-only">Click to upload hero image</span>
-                          </>
-                        )}
-                      </div>
+                  {/* Hero Cover Image */}
+                  <div className="space-y-3 p-4 rounded-2xl bg-card border border-border/80 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="hero-url" className="text-sm font-semibold flex items-center gap-1.5">
+                        <Link2 className="w-4 h-4 text-primary" />
+                        Hero Cover Image Link
+                      </Label>
+                      {watchedHero && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          Active
+                        </span>
+                      )}
                     </div>
-                    <p className="caption text-muted-foreground">Recommended: 1200x675px</p>
+
+                    <div className="relative">
+                      <Input
+                        id="hero-url"
+                        type="url"
+                        placeholder="https://drive.google.com/file/d/... or https://..."
+                        value={watchedHero}
+                        onChange={(e) => handleHeroUrlChange(e.target.value)}
+                        className="font-mono text-xs pr-8"
+                      />
+                      {watchedHero && (
+                        <button
+                          type="button"
+                          onClick={() => handleHeroUrlChange("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          title="Clear URL"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Google Drive auto-converted badge */}
+                    {watchedHero.includes("lh3.googleusercontent.com") && (
+                      <div className="text-[11px] text-amber-500 flex items-center gap-1 font-mono">
+                        <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                        <span>Google Drive link detected and converted to high-speed stream.</span>
+                      </div>
+                    )}
+
+                    {/* Preview Area */}
+                    <div className="relative aspect-video rounded-xl border-2 border-dashed border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+                      {watchedHero ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={watchedHero}
+                            alt="Hero preview"
+                            className="object-cover w-full h-full rounded-lg"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md rounded-lg p-1 border border-white/20">
+                            <a
+                              href={watchedHero}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-white hover:text-primary transition-colors"
+                              title="Open image in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleHeroUrlChange("")}
+                              className="p-1 text-white hover:text-error transition-colors"
+                              title="Remove hero cover"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center p-4 text-muted-foreground">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-1.5 opacity-40" />
+                          <p className="text-xs font-medium">No Hero Cover Link</p>
+                          <p className="text-[10px] text-muted-foreground/80 mt-0.5">
+                            Paste an image link above to view preview
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Recommended: 1200x675px (16:9). Displayed prominently at top of project case study.
+                    </p>
                   </div>
                 </div>
 
                 <Separator />
 
-                {/* Gallery */}
+                {/* Gallery Images */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label>Gallery Images</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendGallery(emptyGalleryItem)}>
-                      <Plus className="w-4 h-4 mr-1" aria-hidden="true" />
-                      ADD IMAGE
+                    <div>
+                      <Label className="text-base font-semibold flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-primary" />
+                        Gallery Images
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Add screenshots, architectural diagrams, or UI mockups using direct image URLs or Google Drive links.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => appendGallery(emptyGalleryItem)}
+                      className="border-primary/40 text-primary hover:bg-primary/10 gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" aria-hidden="true" />
+                      ADD IMAGE LINK
                     </Button>
                   </div>
 
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {galleryFields.map((field, index) => (
-                      <motion.div
-                        key={field.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="relative group"
-                      >
-                        <div className="relative">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleGalleryFileChange(index)}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            aria-label={`Upload gallery image ${index + 1}`}
-                          />
-                          <div className={cn(
-                            "aspect-video rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer transition-colors hover:border-primary/50",
-                            imagePreviews[`gallery_${index}`] && "border-transparent"
-                          )}>
-                            {imagePreviews[`gallery_${index}`] ? (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {galleryFields.map((field, index) => {
+                      const itemUrl = watchedGallery?.[index]?.url || "";
+                      return (
+                        <motion.div
+                          key={field.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="p-4 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3 relative group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                              Image #{index + 1}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-error hover:text-error hover:bg-error/10 h-7 px-2 text-xs"
+                              onClick={() => removeGallery(index)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 mr-1" aria-hidden="true" />
+                              Remove
+                            </Button>
+                          </div>
+
+                          {/* Image URL Input */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-mono text-muted-foreground">Image URL / Link</Label>
+                            <div className="relative">
+                              <Input
+                                type="url"
+                                placeholder="https://... or Google Drive link"
+                                value={itemUrl}
+                                onChange={(e) => handleGalleryUrlChange(index, e.target.value)}
+                                className="font-mono text-xs pr-7"
+                              />
+                              {itemUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleGalleryUrlChange(index, "")}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                  title="Clear URL"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                            {itemUrl.includes("lh3.googleusercontent.com") && (
+                              <div className="text-[10px] text-amber-500 flex items-center gap-1 font-mono">
+                                <Sparkles className="w-3 h-3 shrink-0" />
+                                <span>Converted from Drive</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Live Preview Container */}
+                          <div className="relative aspect-video rounded-xl border border-border bg-muted/30 overflow-hidden flex items-center justify-center">
+                            {itemUrl ? (
                               <>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={imagePreviews[`gallery_${index}`]}
-                                  alt={`Gallery ${index + 1}`}
+                                  src={itemUrl}
+                                  alt={watchedGallery?.[index]?.alt || `Gallery ${index + 1}`}
                                   className="object-cover rounded-lg w-full h-full"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
                                 />
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button type="button" variant="ghost" size="icon" onClick={() => {
-                                    const gallery = form.getValues("gallery");
-                                    gallery[index] = { ...gallery[index], url: "" };
-                                    form.setValue("gallery", gallery);
-                                    setImagePreviews(prev => { const n = { ...prev }; delete n[`gallery_${index}`]; return n; });
-                                  }}>
-                                    <X className="w-4 h-4 text-white" aria-hidden="true" />
-                                  </Button>
+                                <div className="absolute top-1.5 right-1.5 flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-md p-1 border border-white/20">
+                                  <a
+                                    href={itemUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-0.5 text-white hover:text-primary transition-colors"
+                                    title="Open link"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
                                 </div>
                               </>
                             ) : (
-                              <>
-                                <Upload className="w-8 h-8 text-muted-foreground" aria-hidden="true" />
-                                <span className="sr-only">Click to upload</span>
-                              </>
+                              <div className="text-center p-2 text-muted-foreground">
+                                <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-40" />
+                                <span className="text-[10px]">No image link</span>
+                              </div>
                             )}
                           </div>
-                        </div>
-                        <div className="space-y-2 mt-2">
-                          <Controller
-                            name={`gallery.${index}.alt`}
-                            control={form.control}
-                            render={({ field }) => (
-                              <Input {...field} placeholder="Alt text" className="text-sm" />
-                            )}
-                          />
-                          <Controller
-                            name={`gallery.${index}.caption`}
-                            control={form.control}
-                            render={({ field }) => (
-                              <Input {...field} placeholder="Caption (optional)" className="text-sm" />
-                            )}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-error hover:text-error hover:bg-error/10"
-                            onClick={() => removeGallery(index)}
-                          >
-                            <X className="w-3 h-3 mr-1" aria-hidden="true" />
-                            REMOVE
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
+
+                          {/* Alt & Caption */}
+                          <div className="space-y-2 pt-1">
+                            <Controller
+                              name={`gallery.${index}.alt`}
+                              control={form.control}
+                              render={({ field }) => (
+                                <Input {...field} placeholder="Alt text (for accessibility)" className="text-xs" />
+                              )}
+                            />
+                            <Controller
+                              name={`gallery.${index}.caption`}
+                              control={form.control}
+                              render={({ field }) => (
+                                <Input {...field} placeholder="Caption (optional)" className="text-xs" />
+                              )}
+                            />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>
@@ -918,7 +1101,11 @@ Storage"
                         id="seo-ogImage"
                         {...field}
                         type="url"
-                        placeholder="https://example.com/og-image.png"
+                        placeholder="https://example.com/og-image.png or Google Drive link"
+                        onChange={(e) => {
+                          const normalized = normalizeGoogleDriveImageUrl(e.target.value);
+                          field.onChange(normalized);
+                        }}
                       />
                     )}
                   />

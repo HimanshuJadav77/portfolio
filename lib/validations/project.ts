@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 export const projectGalleryItemSchema = z.object({
-  url: z.string().url('Invalid URL'),
-  alt: z.string().min(1, 'Alt text is required'),
-  caption: z.string().optional(),
+  url: z.string().optional().or(z.literal('')),
+  alt: z.string().optional().or(z.literal('')),
+  caption: z.string().optional().or(z.literal('')),
 });
 
 export const projectTechnologySchema = z.object({
@@ -41,9 +41,9 @@ export const projectSchema = z.object({
   featured: z.boolean(),
   published: z.boolean(),
   order: z.number().int().min(0, 'Order must be non-negative'),
-  thumbnailUrl: z.string().url('Invalid thumbnail URL').optional().or(z.literal('')),
-  heroImageUrl: z.string().url('Invalid hero image URL').optional().or(z.literal('')),
-  gallery: z.array(projectGalleryItemSchema),
+  thumbnailUrl: z.string().optional().or(z.literal('')),
+  heroImageUrl: z.string().optional().or(z.literal('')),
+  gallery: z.array(projectGalleryItemSchema).optional().default([]),
   technologies: z.array(projectTechnologySchema),
   metrics: z.array(projectMetricSchema),
   problem: z.string().min(1, 'Problem is required'),
@@ -66,8 +66,8 @@ export const projectFormSchema = z.object({
   featured: z.boolean(),
   published: z.boolean(),
   order: z.number().int().min(0, 'Order must be non-negative'),
-  thumbnailUrl: z.string().url('Invalid thumbnail URL').optional().or(z.literal('')),
-  heroImageUrl: z.string().url('Invalid hero image URL').optional().or(z.literal('')),
+  thumbnailUrl: z.string().optional().or(z.literal('')),
+  heroImageUrl: z.string().optional().or(z.literal('')),
   gallery: z.array(z.any()),
   technologies: z.array(z.any()),
   metrics: z.array(z.any()),

@@ -157,8 +157,10 @@ export const getProjectById = cache(async (id: string): Promise<Project | null> 
   const fallback = FALLBACK_PROJECTS.find(p => p.id === id || p.slug === id) || null;
   return withRetry(async (db) => {
     const doc = await db.collection('projects').doc(id).get();
-    if (!doc.exists) return fallback;
-    return convertDoc<Project>(doc);
+    if (doc.exists) return convertDoc<Project>(doc);
+    const bySlug = await db.collection('projects').where('slug', '==', id).limit(1).get();
+    if (!bySlug.empty) return convertDoc<Project>(bySlug.docs[0]);
+    return fallback;
   }, fallback);
 });
 
